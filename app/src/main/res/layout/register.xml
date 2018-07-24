@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_margin="30dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#000000"
+        android:textColorHint="#000000"
+        android:text="REGISTER"
+        android:textSize="40sp"
+        android:id="@+id/log"
+        android:gravity="center"
+        android:textStyle="bold"
+        android:layout_margin="10dp"/>
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/remail"
+        android:layout_below="@+id/log"
+        android:background="@drawable/border"
+        android:textColor="#000000"
+        android:textColorHint="#000000"
+        android:hint="Enter Email"
+        android:gravity="center"
+        android:layout_margin="10dp"/>
+
+    <EditText
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/rpassword"
+        android:textColor="#000000"
+        android:textColorHint="#000000"
+        android:inputType="textPassword"
+        android:hint="Enter Password"
+        android:background="@drawable/border"
+        android:layout_below="@+id/remail"
+        android:gravity="center"
+        android:layout_margin="10dp"/>
+
+
+    <Button
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/rlogin"
+        android:textColor="#FFFFFF"
+        android:text="REGISTER"
+        android:background="@drawable/back"
+        android:layout_below="@+id/rpassword"
+        android:gravity="center"
+        android:layout_margin="10dp"/>
+
+
+</RelativeLayout>

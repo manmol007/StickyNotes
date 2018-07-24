@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+
+<GridView
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:horizontalSpacing="10dp"
+    android:verticalSpacing="10dp"
+    android:numColumns="1"
+    android:layout_margin="10dp"
+    android:id="@+id/notes_grid"/>
+
+
+    <com.github.clans.fab.FloatingActionMenu
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_marginBottom="15dp"
+        app:menu_colorNormal="#da3c2f"
+        app:menu_colorPressed="#dc4b3f"
+        android:id="@+id/menu"
+        app:menu_colorRipple="#99d4d4d4"
+        android:layout_marginRight="15dp">
+
+        <com.github.clans.fab.FloatingActionButton
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:fab_size="mini"
+            app:fab_label="Add"
+            android:id="@+id/add"
+            android:src="@drawable/file"/>
+
+
+    </com.github.clans.fab.FloatingActionMenu>
+
+
+</RelativeLayout>

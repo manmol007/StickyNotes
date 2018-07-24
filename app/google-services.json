@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "908544299625",
+    "firebase_url": "https://stickynote-cea88.firebaseio.com",
+    "project_id": "stickynote-cea88",
+    "storage_bucket": "stickynote-cea88.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:908544299625:android:c266dc85ca52bbf2",
+        "android_client_info": {
+          "package_name": "com.example.anmol.stickynote"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "908544299625-9688kaj9gcfm5eakm1r1dao2ie58tfa8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.anmol.stickynote",
+            "certificate_hash": "e9ab218eafb1e5f8074cb7bca5675eb6ddab7ea4"
+          }
+        },
+        {
+          "client_id": "908544299625-irnmiue8lc16pl1kv0uqg8gsbpcgn52p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDUYwBY-ZEWxFbT5kItmLDEK4XnxT_BP8o"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "908544299625-irnmiue8lc16pl1kv0uqg8gsbpcgn52p.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
