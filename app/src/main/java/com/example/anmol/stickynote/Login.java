@@ -2,17 +2,21 @@ package com.example.anmol.stickynote;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.Fragment;
 import android.app.FragmentTransaction;
 import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentManager;
+import android.support.v7.view.ContextThemeWrapper;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -20,6 +24,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import com.google.android.gms.auth.api.Auth;
@@ -38,7 +43,11 @@ import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GoogleAuthProvider;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 public class Login extends Fragment {
 
@@ -46,11 +55,11 @@ public class Login extends Fragment {
     private static final int RC_SIGN_IN=1;
     private FirebaseAuth.AuthStateListener authStateListener;
     private ProgressDialog mDialog;
+    private RelativeLayout relativeLayout;
     private GoogleSignInClient mGoogleSignInClient;
     private FirebaseAuth mAuth;
-    private String  email,password;
-    private EditText mEmail,mPassword;
-    private Button login,register;
+    private DatabaseReference reference;
+    Boolean flag=false;
     SharedPreferences preferences;
     public final String TAG="Error";
     SharedPreferences.Editor editor;
@@ -61,11 +70,8 @@ public class Login extends Fragment {
         View view = inflater.inflate(R.layout.login, container, false);
         mDialog = new ProgressDialog(getActivity());
         mAuth = FirebaseAuth.getInstance();
+        relativeLayout=(RelativeLayout)view.findViewById(R.id.relativeLayout);
         google_btn = (SignInButton) view.findViewById(R.id.Google_sign_in);
-        mEmail=(EditText)view.findViewById(R.id.email);
-        mPassword=(EditText)view.findViewById(R.id.password);
-        login=(Button)view.findViewById(R.id.login);
-        register=(Button)view.findViewById(R.id.register);
         preferences=getActivity().getSharedPreferences("user", Context.MODE_PRIVATE);
         editor=preferences.edit();
 
@@ -88,63 +94,41 @@ public class Login extends Fragment {
         authStateListener = new FirebaseAuth.AuthStateListener() {
             @SuppressLint("RestrictedApi")
             @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+            public void onAuthStateChanged(@NonNull final FirebaseAuth firebaseAuth) {
 
                 if (firebaseAuth.getCurrentUser() != null) {
-                    mDialog.dismiss();
-                    Intent intent=new Intent(getActivity(),NavActivity.class);
-                    editor.putString("user",firebaseAuth.getUid()).apply();
-                    startActivity(intent);
-                }
 
-            }
-        };
-
-        login.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                mDialog.show();
-                mDialog.setMessage("Signing with google");
-                email=mEmail.getText().toString();
-                password=mPassword.getText().toString();
-
-                if(TextUtils.isEmpty(email)||TextUtils.isEmpty(password)){
-                    Toast.makeText(getActivity(),"Empty Credentials",Toast.LENGTH_LONG).show();
-                }
-                else{
-                    mAuth.signInWithEmailAndPassword(email,password).addOnCompleteListener(new OnCompleteListener<AuthResult>() {
+                    Log.i("hii","hii");
+                    reference=FirebaseDatabase.getInstance().getReference();
+                    reference.addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
-                        public void onComplete(@NonNull Task<AuthResult> task) {
-                            if(task.isSuccessful()){
-                                FirebaseUser user = mAuth.getCurrentUser();
-                                Intent intent=new Intent(getActivity(),NavActivity.class);
-                                editor.putString("user",user.getUid()).apply();
-                                startActivity(intent);
-                                mDialog.dismiss();
+                        public void onDataChange(DataSnapshot dataSnapshot) {
+
+                            for(DataSnapshot snapshot:dataSnapshot.getChildren()){
+
+                                Log.i("key",snapshot.getKey());
+
+                                if(snapshot.getKey().equals(firebaseAuth.getUid())){
+
+                                    mDialog.dismiss();
+                                    Intent intent=new Intent(getActivity(),NavActivity.class);
+                                    editor.putString("user",firebaseAuth.getUid()).apply();
+                                    startActivity(intent);
+                                }
 
                             }
-                            else{
-                                Toast.makeText(getActivity(),"Incorrect credentials",Toast.LENGTH_LONG).show();
-                                mDialog.dismiss();
-                            }
+
+                        }
+
+                        @Override
+                        public void onCancelled(DatabaseError databaseError) {
+
                         }
                     });
                 }
 
             }
-        });
-
-        register.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-
-                Register register=new Register();
-                android.app.FragmentManager manager=getFragmentManager();
-                FragmentTransaction transaction=manager.beginTransaction();
-                transaction.replace(R.id.relative,register,"register");
-                transaction.commit();
-            }
-        });
+        };
 
         return view;
     }
@@ -188,11 +172,65 @@ public class Login extends Fragment {
                         if (task.isSuccessful()) {
                             // Sign in success, update UI with the signed-in user's information
                             Log.d(TAG, "signInWithCredential:success");
-                            FirebaseUser user = mAuth.getCurrentUser();
-                            Intent intent=new Intent(getActivity(),NavActivity.class);
-                            editor.putString("user",user.getUid()).apply();
-                            startActivity(intent);
+                            final FirebaseUser user = mAuth.getCurrentUser();
+                           DatabaseReference mReference=FirebaseDatabase.getInstance().getReference();
+                           mReference.addListenerForSingleValueEvent(new ValueEventListener() {
+                               @Override
+                               public void onDataChange(DataSnapshot dataSnapshot) {
 
+                                   for(DataSnapshot snapshot:dataSnapshot.getChildren()){
+                                       if(snapshot.getKey().equals(user.getUid())){
+                                                flag=true;
+                                       }
+                                   }
+                                   if(flag==true){
+                                       Intent intent=new Intent(getActivity(),NavActivity.class);
+                                       editor.putString("user",user.getUid()).apply();
+                                       startActivity(intent);
+                                   }
+                                   else{
+
+                                       AlertDialog.Builder builder=new AlertDialog.Builder(new ContextThemeWrapper(getActivity(),R.style.AppTheme));
+                                       final View view=getActivity().getLayoutInflater().inflate(R.layout.password,null);
+                                       builder.setView(view);
+                                       builder.setTitle("Set your password");
+                                       final EditText pass=(EditText)view.findViewById(R.id.Protected);
+                                       builder.setPositiveButton("Submit", new DialogInterface.OnClickListener() {
+                                           @Override
+                                           public void onClick(DialogInterface dialogInterface, int i) {
+
+                                               String password=pass.getText().toString();
+                                               if(TextUtils.isEmpty(password)){
+
+                                                   mDialog.dismiss();
+                                                   Snackbar.make(relativeLayout,"Enter the password to proceed",Snackbar.LENGTH_LONG).show();
+
+                                               }
+                                               else{
+                                                   reference=FirebaseDatabase.getInstance().getReference().child(user.getUid());
+                                                   reference.child("password").setValue(password);
+                                                   mDialog.dismiss();
+                                                   Intent intent=new Intent(getActivity(),NavActivity.class);
+                                                   editor.putString("user",user.getUid()).apply();
+                                                   startActivity(intent);
+                                               }
+
+
+                                           }
+                                       });
+
+                                       AlertDialog dialog=builder.create();
+                                       dialog.show();
+
+                                   }
+
+                               }
+
+                               @Override
+                               public void onCancelled(DatabaseError databaseError) {
+
+                               }
+                           });
 
                         } else {
                             // If sign in fails, display a message to the user.

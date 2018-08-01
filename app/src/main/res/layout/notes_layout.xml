@@ -5,14 +5,10 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
 
-<GridView
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:horizontalSpacing="10dp"
-    android:verticalSpacing="10dp"
-    android:numColumns="1"
-    android:layout_margin="10dp"
-    android:id="@+id/notes_grid"/>
+    <android.support.v7.widget.RecyclerView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/list"/>
 
 
     <com.github.clans.fab.FloatingActionMenu

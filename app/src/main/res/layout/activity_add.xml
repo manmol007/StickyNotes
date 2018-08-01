@@ -23,7 +23,10 @@
     <android.support.v7.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_margin="10dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp"
+        android:layout_marginBottom="3dp"
         android:id="@+id/card"
         android:layout_below="@+id/appbar"
         android:layout_above="@+id/layoutspin">
@@ -31,10 +34,20 @@
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent">
+            <EditText
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="30sp"
+                android:background="@null"
+                android:hint="Enter Category"
+                android:textColorHint="#000000"
+                android:textColor="#000000"
+                android:id="@+id/Addcategory"/>
         <ImageView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_centerHorizontal="true"
+            android:layout_below="@id/Addcategory"
             android:id="@+id/preview"/>
 
     <EditText
@@ -62,24 +75,24 @@
         android:layout_alignParentBottom="true">
 
         <ImageView
-            android:layout_width="50dp"
-            android:layout_height="50dp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
             android:id="@+id/fontspin"
-            android:src="@drawable/fonts"
+            android:src="@drawable/font"
             android:layout_weight="1"/>
         <ImageView
-            android:layout_width="50dp"
-            android:layout_height="50dp"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
             android:id="@+id/colorspin"
-            android:src="@drawable/color"
+            android:src="@drawable/colorpalette"
             android:layout_weight="1"/>
             <ImageView
-                android:layout_width="50dp"
-                android:layout_height="50dp"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
                 android:id="@+id/image"
                 android:text="image"
                 android:gravity="center"
-                android:src="@drawable/image"
+                android:src="@drawable/add"
                 android:layout_weight="1"/>
 
     </LinearLayout>

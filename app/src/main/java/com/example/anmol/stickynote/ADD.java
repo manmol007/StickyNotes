@@ -1,32 +1,40 @@
 package com.example.anmol.stickynote;
 
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Typeface;
 import android.graphics.drawable.BitmapDrawable;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.view.ContextThemeWrapper;
 import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.EditText;
+import android.widget.GridView;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
@@ -60,6 +68,8 @@ public class ADD extends AppCompatActivity {
     Intent intent;
     public static final int REQ=1;
     int flag=0;
+    String Category;
+    EditText category;
     StorageReference mStorage;
 
     @Override
@@ -68,6 +78,7 @@ public class ADD extends AppCompatActivity {
         setContentView(R.layout.activity_add);
         toolbar = (android.support.v7.widget.Toolbar) findViewById(R.id.toolbar);
         text=(EditText)findViewById(R.id.text);
+        category=(EditText)findViewById(R.id.Addcategory);
         mDatabase= FirebaseDatabase.getInstance().getReference();
         mAuth=FirebaseAuth.getInstance();
         preferences=getSharedPreferences("user",MODE_PRIVATE);
@@ -78,16 +89,23 @@ public class ADD extends AppCompatActivity {
         preview=(ImageView)findViewById(R.id.preview);
         Typeface type = Typeface.createFromAsset(getAssets(),"chop.TTF");
         text.setTypeface(type);
+        category.setTypeface(type);
         fontget="chop";
         colorget="-1";
+        Category="default";
 
         intent=getIntent();
 
-        if(intent!=null){
+            if(intent.getStringExtra("category")!=null){
+                Category=intent.getStringExtra("category");
+                category.setText(intent.getStringExtra("category"));
+            }
+//            Log.i("addnotes",intent.getStringExtra("notes"));
 
             text.setText(intent.getStringExtra("notes"));
             if(intent.getStringExtra("color")!=null) {
                 text.setBackgroundColor(Integer.parseInt(intent.getStringExtra("color")));
+                category.setBackgroundColor(Integer.parseInt(intent.getStringExtra("color")));
                 preview.setBackgroundColor(Integer.parseInt(intent.getStringExtra("color")));
             }
             colorget=intent.getStringExtra("color");
@@ -99,57 +117,67 @@ public class ADD extends AppCompatActivity {
                     fontget="barbaric";
                     Typeface typeface = createFromAsset(getAssets(), "barbaric.ttf");
                     text.setTypeface(typeface);
+                    category.setTypeface(typeface);
                 } else if (intent.getStringExtra("font").equals("bloody")) {
                     Typeface typeface = createFromAsset(getAssets(), "bloody.TTF");
                     text.setTypeface(typeface);
+                    category.setTypeface(typeface);
                     fontget="bloody";
                 } else if (intent.getStringExtra("font").equals("blox")) {
                     Typeface typeface = createFromAsset(getAssets(), "blox.ttf");
                     text.setTypeface(typeface);
+                    category.setTypeface(typeface);
                     fontget="blox";
                 } else if (intent.getStringExtra("font").equals("boston")) {
                     Typeface typeface = createFromAsset(getAssets(), "boston.ttf");
                     text.setTypeface(typeface);
                     fontget="boston";
+                    category.setTypeface(typeface);
                 } else if (intent.getStringExtra("font").equals("charles_s")) {
                     Typeface typeface = createFromAsset(getAssets(), "charles_s.ttf");
                     text.setTypeface(typeface);
                     fontget="charles_s";
+                    category.setTypeface(typeface);
                 } else if (intent.getStringExtra("font").equals("chop")) {
                     Typeface typeface = createFromAsset(getAssets(), "chop.TTF");
                     text.setTypeface(typeface);
+                    category.setTypeface(typeface);
                     fontget="chop";
                 } else if (intent.getStringExtra("font").equals("degrassi")) {
                     Typeface typeface = createFromAsset(getAssets(), "degrassi.ttf");
                     text.setTypeface(typeface);
+                    category.setTypeface(typeface);
                     fontget="degrassi";
                 } else if (intent.getStringExtra("font").equals("delicious")) {
                     Typeface typeface = createFromAsset(getAssets(), "delicious.ttf");
                     text.setTypeface(typeface);
+                    category.setTypeface(typeface);
                     fontget="delicious";
                 } else if (intent.getStringExtra("font").equals("koshlang")) {
                     Typeface typeface = createFromAsset(getAssets(), "koshlang.ttf");
                     text.setTypeface(typeface);
+                    category.setTypeface(typeface);
                     fontget="koshlang";
                 } else if (intent.getStringExtra("font").equals("lokicola")) {
                     Typeface typeface = createFromAsset(getAssets(), "lokicola.TTF");
                     text.setTypeface(typeface);
+                    category.setTypeface(typeface);
                 } else if (intent.getStringExtra("font").equals("nofutur")) {
                     Typeface typeface = createFromAsset(getAssets(), "nofutur.ttf");
                     text.setTypeface(typeface);
                     fontget="nofutur";
+                    category.setTypeface(typeface);
                 } else if (intent.getStringExtra("font").equals("romantic")) {
                     Typeface typeface = createFromAsset(getAssets(), "romantic.ttf");
                     text.setTypeface(typeface);
                     fontget="romantic";
+                    category.setTypeface(typeface);
                 }
             }
             if(intent.getStringExtra("imageurl")!=null) {
                 preview.getLayoutParams().height = 200;
                 img=Uri.parse(intent.getStringExtra("imageuri"));
-                Log.i("img",img.toString());
                 preview.setImageURI(img);
-            }
             }
 
         color.setOnClickListener(new View.OnClickListener() {
@@ -159,6 +187,8 @@ public class ADD extends AppCompatActivity {
 
                 final ColorPicker cp=new ColorPicker(ADD.this,255,255,255);
 
+                cp.getWindow().setGravity(Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);
+                cp.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT);
                 cp.show();
 
                 cp.setCallback(new ColorPickerCallback() {
@@ -166,6 +196,7 @@ public class ADD extends AppCompatActivity {
                     public void onColorChosen(int color) {
                         colorget=Integer.toString(color);
                         text.setBackgroundColor(color);
+                        category.setBackgroundColor(color);
                         preview.setBackgroundColor(color);
                         flag=1;
                         cp.dismiss();
@@ -179,9 +210,16 @@ public class ADD extends AppCompatActivity {
             @Override
             public void onClick(View view) {
 
-                AlertDialog.Builder builder=new AlertDialog.Builder(ADD.this);
-                View Dialogview=getLayoutInflater().inflate(R.layout.fontinflate,null);
-                builder.setView(Dialogview);
+
+                final Dialog dialog=new Dialog(ADD.this,R.style.AppTheme);
+                final LayoutInflater inflater=getLayoutInflater();
+                View Dialogview=inflater.inflate(R.layout.fontinflate,null);
+                dialog.setContentView(Dialogview);
+                dialog.setCanceledOnTouchOutside(true);
+                Window window=getWindow();
+                dialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT);
+                dialog.getWindow().setGravity(Gravity.BOTTOM);
+                dialog.show();
 
                 TextView  barbaric=(TextView)Dialogview.findViewById(R.id.barbaric);
                 TextView  bloody=(TextView)Dialogview.findViewById(R.id.bloody);
@@ -196,10 +234,6 @@ public class ADD extends AppCompatActivity {
                 TextView  nofutur=(TextView)Dialogview.findViewById(R.id.nofutur);
                 TextView  romantic=(TextView)Dialogview.findViewById(R.id.romantic);
 
-                final AlertDialog dialog=builder.create();
-                Window window=dialog.getWindow();
-                WindowManager.LayoutParams win=window.getAttributes();
-                win.gravity=Gravity.BOTTOM;
 
                 barbaric.setOnClickListener(new View.OnClickListener() {
                     @Override
@@ -209,7 +243,6 @@ public class ADD extends AppCompatActivity {
                         Typeface typeface=createFromAsset(getAssets(),"barbaric.ttf");
                         text.setTypeface(typeface);
                         dialog.dismiss();
-
                     }
                 });
 
@@ -334,7 +367,6 @@ public class ADD extends AppCompatActivity {
 
                     }
                 });
-                dialog.show();
 
             }
         });
@@ -345,9 +377,37 @@ public class ADD extends AppCompatActivity {
             @Override
             public void onClick(View view) {
 
-                Intent intent=new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                startActivityForResult(intent,REQ);
+                final Dialog dialog=new Dialog(ADD.this,R.style.AppTheme);
+                final LayoutInflater inflater=getLayoutInflater();
+                View dialogview=inflater.inflate(R.layout.picture,null);
+                dialog.setContentView(dialogview);
+                dialog.setCanceledOnTouchOutside(true);
+                Window window=getWindow();
+                dialog.getWindow().setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT);
+                dialog.getWindow().setGravity(Gravity.BOTTOM|Gravity.RIGHT);
+                dialog.show();
 
+                ImageView cam=(ImageView)dialogview.findViewById(R.id.camera);
+                ImageView gallery=(ImageView)dialogview.findViewById(R.id.gallery);
+                cam.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+
+                        Intent intent=new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                        startActivityForResult(intent,REQ);
+
+                    }
+                });
+                gallery.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+
+                        Intent intent=new Intent(Intent.ACTION_GET_CONTENT);
+                        intent.setType("image/*");
+                        startActivityForResult(intent,REQ);
+
+                    }
+                });
             }
         });
 
@@ -371,7 +431,25 @@ public class ADD extends AppCompatActivity {
 
                 }
             });
+        category.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
 
+            }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                Category=category.getText().toString();
+                if(TextUtils.isEmpty(Category)){
+                    Category="default";
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+
+            }
+        });
     }
 
     @Override
@@ -396,20 +474,19 @@ public class ADD extends AppCompatActivity {
     @Override
     public void onBackPressed() {
 
+
         if(flag==0){
 
             colorget="-1";
         }
 
         add = mDatabase.child(preferences.getString("user", null)).child("notes").push();
-
-        if (TextUtils.isEmpty(str)) {
-            Toast.makeText(getApplicationContext(), "Fields are empty", Toast.LENGTH_LONG).show();
-        } else {
+        if (!TextUtils.isEmpty(str))  {
 
             add.child("notes").setValue(str);
             add.child("color").setValue(colorget);
             add.child("font").setValue(fontget);
+            add.child("category").setValue(Category);
 
         try
         {
@@ -421,8 +498,8 @@ public class ADD extends AppCompatActivity {
                         add.child("notes").setValue(str);
                         add.child("color").setValue(colorget);
                         add.child("font").setValue(fontget);
+                        add.child("category").setValue(Category);
                         add.child("imageurl").setValue(link.toString());
-                       Uri uri=null;
                         Bitmap url= null;
                         try {
                             url = new DownloadImagesTask().execute(link.toString()).get();
@@ -430,6 +507,7 @@ public class ADD extends AppCompatActivity {
                             uri= Uri.parse(path);
                             Log.i("uri",uri.toString());
                             add.child("imageuri").setValue(uri.toString());
+
                             return;
                         } catch (InterruptedException e) {
                             e.printStackTrace();
@@ -441,8 +519,8 @@ public class ADD extends AppCompatActivity {
             } catch (Exception e) {
                 e.printStackTrace();
             }
+            startActivity(new Intent(getApplicationContext(),NavActivity.class));
+            overridePendingTransition(0,0);
         }
-        startActivity(new Intent(getApplicationContext(),NavActivity.class));
-        overridePendingTransition(0,0);
     }
 }

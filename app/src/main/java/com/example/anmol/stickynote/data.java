@@ -2,20 +2,39 @@ package com.example.anmol.stickynote;
 
 public class data {
 
-    String notes,color,imageurl,font,imageuri,rdate,rtime;
+    String notes,color,imageurl,font,imageuri,rdate,rtime,category,starred;
 
     public data(){
 
     }
 
-    public data(String notes, String color, String imageurl, String font, String imageuri, String rdate, String rtime) {
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public String getStarred() {
+        return starred;
+    }
+
+    public void setStarred(String starred) {
+        this.starred = starred;
+    }
+
+    public data(String notes, String color, String imageurl, String starred, String font, String imageuri, String rdate, String rtime, String category) {
         this.notes = notes;
         this.color = color;
         this.imageurl = imageurl;
+        this.category=category;
+
         this.font = font;
         this.imageuri = imageuri;
         this.rdate = rdate;
         this.rtime = rtime;
+        this.starred=starred;
     }
 
     public String getNotes() {

@@ -1,5 +1,6 @@
 package com.example.anmol.stickynote;
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
 import android.app.Fragment;
@@ -8,12 +9,21 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
+import android.hardware.fingerprint.FingerprintManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Telephony;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.design.widget.Snackbar;
 import android.support.v7.view.ContextThemeWrapper;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.text.TextUtils;
+import android.util.Log;
 import android.view.ActionMode;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -27,8 +37,10 @@ import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
 import android.widget.DatePicker;
+import android.widget.EditText;
 import android.widget.GridView;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.TimePicker;
 import android.widget.Toast;
@@ -40,6 +52,8 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.multidots.fingerprintauth.FingerPrintAuthCallback;
+import com.multidots.fingerprintauth.FingerPrintAuthHelper;
 
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -48,53 +62,175 @@ import static android.graphics.Typeface.SANS_SERIF;
 import static android.graphics.Typeface.SERIF;
 import static android.graphics.Typeface.createFromAsset;
 
-public class Archive extends Fragment {
+public class Archive extends Fragment implements FingerPrintAuthCallback {
 
-
-    GridView grid;
+    String notes;
+    FingerPrintAuthHelper mFingerPrint;
     DatabaseReference reference;
     MyAdapter adapter;
+    Intent intent;
+    ViewAdapter dataadapter;
+    Intent sharingIntent;
     String sharedata;
-    DatabaseReference mReference,unArchivereference;
+    DatabaseReference mReference,ArchiveReference,TrashReference;
     Boolean clicked=false;
-    ArrayList<data> myData;
-    SharedPreferences preferences;
-    Long rdate,rtime;
-    ArrayList<Uri> ImageUri=new ArrayList<>();
-    int settype=0;
-    int flag=0;
-    Boolean LongClick=false;
+    ArrayList<data> viewData;
     ActionMode actionMode;
-    ArrayList<Integer> index=new ArrayList<>();
+    ArrayList<String> myData;
+    SharedPreferences preferences;
+    String rdate,rtime;
+    int flag=0;
+    ArrayList<String> category;
+    AlertDialog dialog;
+    Boolean LongClick=false;
+    RelativeLayout relativeLayout;
+    RecyclerView list;
+    String password;
+    ArrayList<Uri> ImageUri=new ArrayList<>();
+    ArrayList<String> index=new ArrayList<>();
 
     @Nullable
     @Override
-    public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState) {
+    public View onCreateView(final LayoutInflater inflater, @Nullable ViewGroup container, Bundle savedInstanceState) {
 
-        final View view=inflater.inflate(R.layout.archive_layout,container,false);
-        preferences=getActivity().getSharedPreferences("user", Context.MODE_PRIVATE);
+        mFingerPrint=FingerPrintAuthHelper.getHelper(getActivity(),this);
+        final View view=inflater.inflate(R.layout.trash_layout,container,false);
+        myData=new ArrayList();
+        relativeLayout=(RelativeLayout)view.findViewById(R.id.layout);
         mReference= FirebaseDatabase.getInstance().getReference();
-        grid=(GridView)view.findViewById(R.id.archive_grid);
-        setHasOptionsMenu(true);
-
-        myData=new ArrayList<>();
-
+        preferences=getActivity().getSharedPreferences("user",Context.MODE_PRIVATE);
+        list=(RecyclerView)view.findViewById(R.id.list);
+        list.setHasFixedSize(true);
+        list.setLayoutManager(new LinearLayoutManager(getActivity()));
         reference=mReference.child(preferences.getString("user",null)).child("Archive");
 
+        mReference.child(preferences.getString("user",null)).child("password").addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+
+                    password= dataSnapshot.getValue().toString();
+                    Log.i("password",password);
+
+
+                AlertDialog.Builder builder=new AlertDialog.Builder(new ContextThemeWrapper(getActivity(),R.style.AppTheme));
+                final View mview=getActivity().getLayoutInflater().inflate(R.layout.password,null);
+                builder.setView(mview);
+                final EditText pass=(EditText)mview.findViewById(R.id.Protected);
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+
+                        mFingerPrint.stopAuth();
+                        startActivity(new Intent(getActivity(),NavActivity.class));
+                        getActivity().overridePendingTransition(0,0);
+
+                    }
+                });
+                builder.setPositiveButton("Submit", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+
+                        String GetPassword = pass.getText().toString();
+                        if (TextUtils.isEmpty(GetPassword)) {
+
+                            Snackbar.make(relativeLayout, "Enter the password to proceed", Snackbar.LENGTH_LONG).show();
+
+                        } else {
+                            if(password.equals(GetPassword)){
+
+                                reference.addValueEventListener(new ValueEventListener() {
+                                    @Override
+                                    public void onDataChange(DataSnapshot dataSnapshot) {
+
+                                        myData.clear();
+
+                                        for(DataSnapshot snap:dataSnapshot.getChildren()) {
+
+                                            String d = snap.getValue(data.class).getCategory();
+
+                                            if(!myData.contains(d)){
+                                                myData.add(d);
+                                            }
+                                        }
+
+                                        adapter=new MyAdapter(getActivity(),myData);
+                                        adapter.notifyDataSetChanged();
+                                        list.setAdapter(adapter);
+                                    }
+
+                                    @Override
+                                    public void onCancelled(DatabaseError databaseError) {
+
+                                    }
+                                });
+                            }
+                            else
+                                {
+                                    Intent intent = new Intent(getActivity(), NavActivity.class);
+                                    startActivity(intent);
+                            }
+                        }
+                    }
+                });
+                 dialog=builder.create();
+                 dialog.setCanceledOnTouchOutside(false);
+                 dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                dialog.show();
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+
+            }
+        });
+        setHasOptionsMenu(true);
+
+        return view;
+    }
+
+    @Override
+    public void onNoFingerPrintHardwareFound() {
+
+        Toast.makeText(getActivity(),"Your phone doesnt support fingerprint",Toast.LENGTH_LONG).show();
+
+    }
+
+    @Override
+    public void onNoFingerPrintRegistered() {
+
+        Toast.makeText(getActivity(),"You havnt registered any fingerprint",Toast.LENGTH_LONG).show();
+
+    }
+
+    @Override
+    public void onBelowMarshmallow() {
+
+        Toast.makeText(getActivity(),"Android is less than marshmello",Toast.LENGTH_LONG).show();
+
+    }
+
+    @Override
+    public void onAuthSuccess(FingerprintManager.CryptoObject cryptoObject) {
+
+         dialog.dismiss();
         reference.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
 
-                for(DataSnapshot snapshot:dataSnapshot.getChildren()){
+                myData.clear();
 
-                    data d=snapshot.getValue(data.class);
-                    myData.add(d);
+                for(DataSnapshot snap:dataSnapshot.getChildren()) {
 
+                    String d = snap.getValue(data.class).getCategory();
 
-                    adapter=new MyAdapter(getActivity(),myData);
-                    adapter.notifyDataSetChanged();
-                    grid.setAdapter(adapter);
+                    if(!myData.contains(d)){
+                        myData.add(d);
+                    }
                 }
+
+                adapter=new MyAdapter(getActivity(),myData);
+                adapter.notifyDataSetChanged();
+                list.setAdapter(adapter);
             }
 
             @Override
@@ -103,198 +239,26 @@ public class Archive extends Fragment {
             }
         });
 
-
-
-
-
-        grid.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
-            @Override
-            public boolean onItemLongClick(AdapterView<?> adapterView, View view, int i, long l) {
-
-                if(LongClick){
-
-
-                }
-                else {
-                    actionMode= getActivity().startActionMode(new ActionBarCallBack());
-
-                    view.setAlpha((float) 0.5);
-
-                    index.add(i);
-
-                    clicked = true;
-                    LongClick=true;
-                }
-                return true;
-            }
-        });
-
-        grid.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, final int i, long l) {
-
-
-                final int k=i;
-
-                Boolean flag=false;
-
-                if(LongClick) {
-                    for (int j = 0; j < index.size(); ++j) {
-
-
-                        if (index.get(j) == i) {
-
-                            flag = true;
-                            index.remove(j);
-                            view.setAlpha(1);
-                            break;
-
-
-
-                        }
-
-                    }
-
-                    if (!flag) {
-                        if (clicked) {
-                            view.setAlpha((float) 0.5);
-                            index.add(i);
-                        }
-                    }
-                    else if(index.size()==0){
-
-
-                        startActivity(new Intent(getActivity(),NavActivity.class));
-                        getActivity().overridePendingTransition(0,0);
-                    }
-                }
-                else{
-
-                    Intent intent=new Intent(getActivity(),ADD.class);
-                    intent.putExtra("notes",myData.get(i).getNotes());
-                    intent.putExtra("font",myData.get(i).getFont());
-                    intent.putExtra("color",myData.get(i).getColor());
-
-                    if(myData.get(i).getImageurl()!=null) {
-                        intent.putExtra("imageurl",myData.get(i).getImageurl());
-                    }
-                    reference.addValueEventListener(new ValueEventListener() {
-                        @Override
-                        public void onDataChange(DataSnapshot dataSnapshot) {
-
-                            for(DataSnapshot snapshot:dataSnapshot.getChildren()){
-
-                                data d=snapshot.getValue(data.class);
-
-                                if(d.getNotes()==myData.get(k).getNotes()){
-                                    reference.child(snapshot.getKey()).removeValue();
-                                }
-
-                            }
-
-                        }
-
-                        @Override
-                        public void onCancelled(DatabaseError databaseError) {
-
-                        }
-                    });
-
-                    startActivity(intent);
-
-                }
-            }
-        });
-
-        return view;
     }
 
-
-    public class MyAdapter extends BaseAdapter {
-
-        Context ctx;
-        ArrayList<data> myData=new ArrayList();
-
-
-        public MyAdapter(Context ctx,ArrayList<data> myData) {
-            this.myData = myData;
-            this.ctx=ctx;
-        }
-
-        @Override
-        public int getCount() {
-            return myData.size();
-        }
-
-        @Override
-        public Object getItem(int i) {
-            return myData.get(i);
-        }
-
-        @Override
-        public long getItemId(int i) {
-            return i;
-        }
-
-        @Override
-        public View getView(int i, View view, ViewGroup viewGroup) {
-
-            view= LayoutInflater.from(ctx).inflate(R.layout.card,viewGroup,false);
-
-
-
-            final data d=(data)this.getItem(i);
-            TextView text=(TextView)view.findViewById(R.id.datatext);
-            ImageView img=(ImageView)view.findViewById(R.id.img);
-            String fontget = d.getFont();
-            String colorget = d.getColor();
-            view.setBackgroundColor(Integer.parseInt(colorget));
-
-            if (fontget.equals("barbaric")) {
-                Typeface typeface = createFromAsset(getActivity().getAssets(), "barbaric.ttf");
-                text.setTypeface(typeface);
-            } else if (fontget.equals("bloody")) {
-                Typeface typeface = createFromAsset(getActivity().getAssets(), "bloody.TTF");
-                text.setTypeface(typeface);
-            } else if (fontget.equals("blox")) {
-                Typeface typeface = createFromAsset(getActivity().getAssets(), "blox.ttf");
-                text.setTypeface(typeface);
-            } else if (fontget.equals("boston")) {
-                Typeface typeface = createFromAsset(getActivity().getAssets(), "boston.ttf");
-                text.setTypeface(typeface);
-            } else if (fontget.equals("charles_s")) {
-                Typeface typeface = createFromAsset(getActivity().getAssets(), "charles_s.ttf");
-                text.setTypeface(typeface);
-            } else if (fontget.equals("chop")) {
-                Typeface typeface = createFromAsset(getActivity().getAssets(), "chop.TTF");
-                text.setTypeface(typeface);
-            } else if (fontget.equals("degrassi")) {
-                Typeface typeface = createFromAsset(getActivity().getAssets(), "degrassi.ttf");
-                text.setTypeface(typeface);
-            } else if (fontget.equals("delicious")) {
-                Typeface typeface = createFromAsset(getActivity().getAssets(), "delicious.ttf");
-                text.setTypeface(typeface);
-            } else if (fontget.equals("koshlang")) {
-                Typeface typeface = createFromAsset(getActivity().getAssets(), "koshlang.ttf");
-                text.setTypeface(typeface);
-            } else if (fontget.equals("lokicola")) {
-                Typeface typeface = createFromAsset(getActivity().getAssets(), "lokicola.TTF");
-                text.setTypeface(typeface);
-            } else if (fontget.equals("nofutur")) {
-                Typeface typeface = createFromAsset(getActivity().getAssets(), "nofutur.ttf");
-                text.setTypeface(typeface);
-            } else if (fontget.equals("romantic")) {
-                Typeface typeface = createFromAsset(getActivity().getAssets(), "romantic.ttf");
-                text.setTypeface(typeface);
-            }text.setText(d.getNotes());
-
-            if(d.getImageurl()!=null) {
-                img.getLayoutParams().height = 200;
-                Glide.with(ctx).load(d.getImageurl()).into(img);
-            }
-            return view;
-        }
+    @Override
+    public void onAuthFailed(int errorCode, String errorMessage) {
+        Toast.makeText(getActivity(),"Try again unable to recognize",Toast.LENGTH_LONG).show();
     }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        mFingerPrint.startAuth();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        mFingerPrint.stopAuth();
+    }
+
+    @SuppressLint("ValidFragment")
     public class ActionBarCallBack implements ActionMode.Callback{
 
         @Override
@@ -311,40 +275,48 @@ public class Archive extends Fragment {
         }
 
         @Override
-        public boolean onActionItemClicked(ActionMode actionMode, MenuItem menuItem) {
+        public boolean onActionItemClicked(final ActionMode actionMode, MenuItem menuItem) {
+
+
             if(R.id.delete==menuItem.getItemId()){
 
-                for(int i=0;i<index.size();++i){
+                for (int i = 0; i < index.size(); ++i) {
 
-                    final String notes=myData.get(index.get(i)).getNotes();
+                    final DatabaseReference permanentreference = mReference.child(preferences.getString("user", null)).child("Trash").push();
+
+                    final String mnotes = index.get(i);
 
                     reference.addValueEventListener(new ValueEventListener() {
                         @Override
                         public void onDataChange(DataSnapshot dataSnapshot) {
 
-                            for(DataSnapshot snapshot:dataSnapshot.getChildren()){
+                            for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
 
-                                data d=snapshot.getValue(data.class);
+                                data d = snapshot.getValue(data.class);
 
-                                if(d.getNotes()==notes){
+                                if (d.getNotes().equals(mnotes)) {
+
+                                    permanentreference.push();
+
                                     reference.child(snapshot.getKey()).removeValue();
-                                    startActivity(new Intent(getActivity(),NavActivity.class));
-                                    getActivity().overridePendingTransition(0,0);
+                                    permanentreference.child("notes").setValue(d.getNotes());
+                                    permanentreference.child("font").setValue(d.getFont());
+                                    permanentreference.child("color").setValue(d.getColor());
+                                    permanentreference.child("category").setValue(d.getCategory());
+                                    if (d.getImageurl() != null) {
+                                        permanentreference.child("imageurl").setValue(d.getImageurl());
+                                        permanentreference.child("imageuri").setValue(d.getImageuri());
+                                    }
                                 }
-
                             }
-
                         }
-
                         @Override
                         public void onCancelled(DatabaseError databaseError) {
 
                         }
                     });
-
-
                 }
-
+                actionMode.finish();
             }
             else if(R.id.reminder==menuItem.getItemId()){
 
@@ -370,9 +342,15 @@ public class Archive extends Fragment {
                             @Override
                             public void onDateSet(DatePicker datePicker, int i, int i1, int i2) {
 
-                                String d=i2+ "-" + i1 +" - "+i;
-                                date.setText(d);
-                                rtime=c.getTimeInMillis();
+                                String low=null;
+                                if(i1<9){
+                                    low="0"+(i1+1);
+                                }else{
+                                    low= String.valueOf(i1);
+                                }
+
+                                rdate =i2+"-"+low+"-"+i;
+                                date.setText(rdate);
                             }
                         },year,month,day);
 
@@ -393,13 +371,18 @@ public class Archive extends Fragment {
                             @Override
                             public void onTimeSet(TimePicker timePicker, int i, int i1) {
 
-                                String t=i+":"+i1;
-                                time.setText(t);
-                                rdate=c.getTimeInMillis();
-                                ;
-                            }
-                        },hour,min,true);
+                                String low=null;
+                                if(i1<9){
+                                    low="0"+(i1);
+                                }
+                                else{
+                                    low= String.valueOf(i1);
+                                }
 
+                                rtime=i+":"+low;
+                                time.setText(rtime);
+                            }
+                        },hour,min,false);
 
                         dialog.show();
                     }
@@ -409,49 +392,47 @@ public class Archive extends Fragment {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
 
-                        DatabaseReference nreference=mReference.child(preferences.getString("user",null));
+                        for(int j = 0; j<index.size(); ++j){
 
-                        nreference.addValueEventListener(new ValueEventListener() {
-                            @Override
-                            public void onDataChange(DataSnapshot dataSnapshot) {
+                            notes=index.get(j);
+                            reference.addValueEventListener(new ValueEventListener() {
+                                @Override
+                                public void onDataChange(DataSnapshot dataSnapshot) {
 
-                                for(DataSnapshot snap:dataSnapshot.getChildren()) {
+                                    for(DataSnapshot snapshot:dataSnapshot.getChildren()){
 
-                                    data d = snap.getValue(data.class);
-                                    for (int j = 0; j < index.size(); ++j) {
-                                        if (d.getNotes() == myData.get(index.get(j)).getNotes()) {
+                                        data d=snapshot.getValue(data.class);
 
-                                            reference.child(snap.getKey()).child("date").setValue(rtime);
-                                            reference.child(snap.getKey()).child("time").setValue(rdate);
+                                        if(d.getNotes().equals(notes)){
+
+                                            reference.child(snapshot.getKey()).child("rdate").setValue(rdate);
+                                            reference.child(snapshot.getKey()).child("rtime").setValue(rtime);
+
                                         }
-
                                     }
                                 }
-                            }
 
-                            @Override
-                            public void onCancelled(DatabaseError databaseError) {
+                                @Override
+                                public void onCancelled(DatabaseError databaseError) {
 
-                            }
-                        });
-
-
-
+                                }
+                            });
+                        }
+                        Intent intent1=new Intent(getActivity(),NotificationBroadcast.class);
+                        getActivity().startService(intent1);
+                        actionMode.finish();
                     }
                 });
                 AlertDialog dialog=builder.create();
                 dialog.show();
-
-
-
             }
             else if(R.id.unArchive==menuItem.getItemId()){
 
-                unArchivereference=mReference.child(preferences.getString("user",null)).child("notes").push();
 
                 for(int i=0;i<index.size();++i){
+                    final DatabaseReference unArchivereference=mReference.child(preferences.getString("user",null)).child("notes").push();
 
-                    final String notes=myData.get(index.get(i)).getNotes();
+                    final String notes=index.get(i);
 
                     reference.addValueEventListener(new ValueEventListener() {
                         @Override
@@ -461,16 +442,17 @@ public class Archive extends Fragment {
 
                                 data d=snapshot.getValue(data.class);
 
-                                if(d.getNotes()==notes){
+                                if(d.getNotes().equals(notes)){
                                     reference.child(snapshot.getKey()).removeValue();
                                     unArchivereference.child("notes").setValue(d.getNotes());
                                     unArchivereference.child("font").setValue(d.getFont());
                                     unArchivereference.child("color").setValue(d.getColor());
+                                    unArchivereference.child("category").setValue(d.getCategory());
                                     if(d.getImageurl()!=null){
                                         unArchivereference.child("imageurl").setValue(d.getImageurl());
+                                        unArchivereference.child("imageuri").setValue(d.getImageuri());
                                     }
-                                    startActivity(new Intent(getActivity(),NavActivity.class));
-                                    getActivity().overridePendingTransition(0,0);
+                                actionMode.finish();
                                 }
 
                             }
@@ -491,66 +473,328 @@ public class Archive extends Fragment {
             else if(R.id.share==menuItem.getItemId()){
 
 
-                sharedata=myData.get(index.get(0)).getNotes();
+                sharingIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+
+                sharedata=index.get(0);
 
                 for(int i=1;i<index.size();++i){
                     sharedata+="\n";
-                    sharedata+=myData.get(index.get(i)).getNotes();
+                    sharedata+=index.get(i);
                 }
 
-                Intent sharingIntent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+
                 sharingIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
-                sharingIntent.setType("plain/text");
-                for(int i=0;i<index.size();++i){
+                sharingIntent.setType("text/*");
 
-                    if(myData.get(index.get(i)).getImageuri()!=null) {
-                        sharingIntent.setType("image/*");
-                        settype=1;
-                        ImageUri.add(Uri.parse(myData.get(index.get(i)).getImageuri()));
-                    }
-                }
-                if(settype==1){
-                    sharingIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM,ImageUri);
-                }
                 sharingIntent.putExtra(Intent.EXTRA_TEXT,sharedata);
-                startActivity(sharingIntent);
+                for(int i=0;i<index.size();++i){
+                    final int finalI = i;
+                    reference.addValueEventListener(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot dataSnapshot) {
+
+                            for(DataSnapshot snapshot:dataSnapshot.getChildren()){
+
+                                data d=snapshot.getValue(data.class);
+
+                                if(d.getNotes().equals(index.get(finalI))){
+                                    if(d.getImageurl()!=null){
+                                        Log.i("true ","true");
+                                        if(!ImageUri.contains(d.getImageuri()))
+                                            ImageUri.add(Uri.parse(d.getImageuri()));
+                                    }
+                                }
+                            }
+                            if(!ImageUri.isEmpty()) {
+
+                                Toast.makeText(getActivity(),ImageUri.toString(),Toast.LENGTH_LONG).show();
+
+                                sharingIntent.putParcelableArrayListExtra(Intent.EXTRA_STREAM,ImageUri);
+                                sharingIntent.setType("image/*");
+                            }
+                            startActivity(sharingIntent);
+
+                        }
+
+                        @Override
+                        public void onCancelled(DatabaseError databaseError) {
+
+                        }
+                    });
+                }
 
             }
-            return false;
+            return true;
         }
 
         @Override
         public void onDestroyActionMode(ActionMode actionMode) {
 
-            actionMode.finish();
             startActivity(new Intent(getActivity(),NavActivity.class));
             getActivity().overridePendingTransition(0,0);
-
         }
     }
 
-    @Override
-    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-        getActivity().getMenuInflater().inflate(R.menu.finalmenu,menu);
-        super.onCreateOptionsMenu(menu, inflater);
+
+    public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyHolder>{
+
+        ArrayList<String> myData;
+        Context ctx;
+
+        public MyAdapter(Context ctx,ArrayList<String> myData){
+
+            this.myData=myData;
+            this.ctx=ctx;
+
+        }
+
+        @NonNull
+        @Override
+        public MyHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+
+
+            View view=LayoutInflater.from(parent.getContext()).inflate(R.layout.noteslistlayout,parent,false);
+
+            return new MyHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull final MyHolder holder, final int position) {
+
+            final int peak=position;
+            viewData=new ArrayList();
+            holder.category.setText(myData.get(position));
+            holder.categorylist.setLayoutManager(new LinearLayoutManager(ctx,LinearLayoutManager.HORIZONTAL,false));
+            holder.categorylist.setHasFixedSize(true);
+
+            reference.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+
+                    viewData.clear();
+                    for(DataSnapshot snapshot:dataSnapshot.getChildren()){
+                        data d=snapshot.getValue(data.class);
+
+                        viewData.add(d);
+                    }
+                    ArrayList<data> list=new ArrayList<>();
+                    for(int i=0;i<viewData.size();++i){
+
+                        if(holder.category.getText().equals(viewData.get(i).getCategory())){
+                            list.add(viewData.get(i));
+                        }
+
+                    }
+                    dataadapter=new ViewAdapter(list,ctx);
+                    holder.categorylist.setAdapter(dataadapter);
+                }
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+
+                }
+            });
+
+        }
+
+        @Override
+        public int getItemCount() {
+            return myData.size();
+        }
+
+        public class MyHolder extends RecyclerView.ViewHolder{
+
+            TextView category;
+            RecyclerView categorylist;
+            View gridview;
+
+            public MyHolder(View itemView) {
+                super(itemView);
+                category=(TextView)itemView.findViewById(R.id.category);
+                categorylist=(RecyclerView)itemView.findViewById(R.id.viewlist);
+                gridview=itemView;
+            }
+        }
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
+    public class ViewAdapter extends RecyclerView.Adapter<ViewAdapter.viewHolder>{
 
-        if(R.id.grid==item.getItemId()){
-            if(flag==0) {
-                grid.setNumColumns(2);
-                item.setIcon(R.mipmap.mysinglegrid);
-                flag=1;
-            }else
-            {
-                grid.setNumColumns(1);
-                item.setIcon(R.mipmap.mygrid);
-                flag=0;
+        ArrayList<data> viewData;
+        Context ctx;
+
+        public ViewAdapter(ArrayList<data> viewData,Context ctx){
+
+            this.viewData=viewData;
+            this.ctx=ctx;
+
+        }
+
+
+        @NonNull
+        @Override
+        public viewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+
+            View view=LayoutInflater.from(parent.getContext()).inflate(R.layout.listviewbind,parent,false);
+
+            return new viewHolder(view);
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull final viewHolder holder, int position) {
+
+            holder.mView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    Boolean flag = false;
+
+                    Log.i("index",index.toString());
+                    if (LongClick) {
+                        for (int j = 0; j < index.size(); ++j) {
+
+
+                            if (index.get(j).equals( holder.viewtext.getText().toString())) {
+
+                                flag = true;
+                                index.remove(j);
+                                view.setAlpha(1);
+                                break;
+                            }
+
+                        }
+
+                        if (!flag) {
+                            if (clicked) {
+                                view.setAlpha((float) 0.5);
+                                index.add(holder.viewtext.getText().toString());
+                            }
+                        } else if (index.size() == 0) {
+
+                            actionMode.finish();
+                        }
+                    } else {
+
+                        intent = new Intent(getActivity(), ADD.class);
+
+                        reference.addValueEventListener(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(DataSnapshot dataSnapshot) {
+                                for(DataSnapshot snapshot:dataSnapshot.getChildren()){
+                                    data d=snapshot.getValue(data.class);
+                                    if(d.getNotes().equals(holder.viewtext.getText().toString())){
+                                        intent.putExtra("notes",d.getNotes());
+                                        intent.putExtra("category",d.getCategory());
+                                        intent.putExtra("color",d.getColor());
+                                        intent.putExtra("font",d.getFont());
+                                        if(d.getImageurl()!=null){
+                                            intent.putExtra("imageurl",d.getImageurl());
+                                            intent.putExtra("imageuri",d.getImageuri());
+                                        }
+                                        reference.child(snapshot.getKey()).removeValue();
+                                    }
+                                }
+                                startActivity(intent);
+                            }
+
+                            @Override
+                            public void onCancelled(DatabaseError databaseError) {
+
+                            }
+                        });
+
+                    }
+                }
+            });
+
+            holder.mView.setOnLongClickListener(new View.OnLongClickListener() {
+                @Override
+                public boolean onLongClick(View view) {
+                    if(LongClick){
+
+
+                    }
+                    else {
+                        actionMode= getActivity().startActionMode(new ActionBarCallBack());
+
+                        view.setAlpha((float) 0.5);
+
+                        index.add(holder.viewtext.getText().toString());
+
+                        clicked = true;
+                        LongClick=true;
+                        Log.i("index",index.toString());
+                    }
+                    return true;
+                }
+
+            });
+
+            holder.viewtext.setText(viewData.get(position).getNotes());
+            String fontget = viewData.get(position).getFont();
+            String colorget = viewData.get(position).getColor();
+            holder.mView.setBackgroundColor(Integer.parseInt(colorget));
+            if (fontget.equals("barbaric")) {
+                Typeface typeface = createFromAsset(getActivity().getAssets(), "barbaric.ttf");
+                holder.viewtext.setTypeface(typeface);
+            } else if (fontget.equals("bloody")) {
+                Typeface typeface = createFromAsset(getActivity().getAssets(), "bloody.TTF");
+                holder.viewtext.setTypeface(typeface);
+            } else if (fontget.equals("blox")) {
+                Typeface typeface = createFromAsset(getActivity().getAssets(), "blox.ttf");
+                holder.viewtext.setTypeface(typeface);
+            } else if (fontget.equals("boston")) {
+                Typeface typeface = createFromAsset(getActivity().getAssets(), "boston.ttf");
+                holder.viewtext.setTypeface(typeface);
+            } else if (fontget.equals("charles_s")) {
+                Typeface typeface = createFromAsset(getActivity().getAssets(), "charles_s.ttf");
+                holder.viewtext.setTypeface(typeface);
+            } else if (fontget.equals("chop")) {
+                Typeface typeface = createFromAsset(getActivity().getAssets(), "chop.TTF");
+                holder.viewtext.setTypeface(typeface);
+            } else if (fontget.equals("degrassi")) {
+                Typeface typeface = createFromAsset(getActivity().getAssets(), "degrassi.ttf");
+                holder.viewtext.setTypeface(typeface);
+            } else if (fontget.equals("delicious")) {
+                Typeface typeface = createFromAsset(getActivity().getAssets(), "delicious.ttf");
+                holder.viewtext.setTypeface(typeface);
+            } else if (fontget.equals("koshlang")) {
+                Typeface typeface = createFromAsset(getActivity().getAssets(), "koshlang.ttf");
+                holder.viewtext.setTypeface(typeface);
+            } else if (fontget.equals("lokicola")) {
+                Typeface typeface = createFromAsset(getActivity().getAssets(), "lokicola.TTF");
+                holder.viewtext.setTypeface(typeface);
+            } else if (fontget.equals("nofutur")) {
+                Typeface typeface = createFromAsset(getActivity().getAssets(), "nofutur.ttf");
+                holder.viewtext.setTypeface(typeface);
+            } else if (fontget.equals("romantic")) {
+                Typeface typeface = createFromAsset(getActivity().getAssets(), "romantic.ttf");
+                holder.viewtext.setTypeface(typeface);
+            }
+            if (viewData.get(position).getImageurl() != null) {
+                holder.viewImg.getLayoutParams().height = 200;
+                Glide.with(ctx).load(viewData.get(position).getImageurl()).into(holder.viewImg);
             }
         }
 
-        return true;
+        @Override
+        public int getItemCount() {
+            return viewData.size();
+        }
+
+        public class viewHolder extends RecyclerView.ViewHolder{
+
+            ImageView viewImg;
+            TextView viewtext;
+            View mView;
+
+            public viewHolder(View itemView) {
+                super(itemView);
+                viewImg=(ImageView)itemView.findViewById(R.id.viewimg);
+                viewtext=(TextView)itemView.findViewById(R.id.viewtext);
+                mView=itemView;
+            }
+        }
     }
+
+
+
 }
